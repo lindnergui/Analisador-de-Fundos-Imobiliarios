@@ -1,0 +1,10 @@
+# Pastas que não devem ser versionadas
+venv/
+__pycache__/
+.env
+historico/
+relatorios/
+.vscode/
+
+# Arquivos do sistema
+.DS_Store

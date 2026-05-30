@@ -1,0 +1,214 @@
+import sys
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.text import Text
+from rich import box
+from rich.rule import Rule
+
+from extrator import extrair_texto_completo, extrair_indicadores_chave
+from analisador import analisar_fii
+from historico import salvar_analise, carregar_historico
+
+console = Console()
+
+
+def exibir_banner():
+    banner = Text()
+    banner.append("FII", style="bold green")
+    banner.append(" Analyzer", style="bold white")
+    banner.append(" — Análise Inteligente de Fundos Imobiliários", style="dim")
+    console.print(Panel(banner, border_style="green", padding=(1, 4)))
+
+
+def exibir_indicadores(indicadores: dict, ticker: str):
+    table = Table(
+        title=f"📊 Indicadores Extraídos — {ticker}",
+        box=box.ROUNDED,
+        border_style="cyan",
+        header_style="bold cyan",
+        show_lines=True,
+    )
+
+    table.add_column("Indicador", style="bold white", min_width=22)
+    table.add_column("Valor", justify="right", min_width=16)
+    table.add_column("Status", justify="center", min_width=10)
+
+    labels = {
+        "dy_mensal":          "DY Mensal (%)",
+        "dy_anual":           "DY Anual (%)",
+        "pvp":                "P/VP",
+        "cota_patrimonial":   "Cota Patrimonial (R$)",
+        "ultimo_rendimento":  "Último Rendimento (R$)",
+        "vacancia":           "Vacância (%)",
+        "area_total":         "Área Total (m²)",
+        "num_cotas":          "Nº de Cotas",
+    }
+
+    alertas = {
+        "dy_mensal": lambda v: ("green" if v and v > 0.5 else "yellow"),
+        "vacancia":  lambda v: ("red" if v and v > 20 else "green"),
+        "pvp":       lambda v: ("green" if v and v < 1 else "yellow"),
+    }
+
+    # trata tipo_fundo separadamente com cor
+    tipo = indicadores.get("tipo_fundo", "desconhecido")
+    cores_tipo = {
+        "papel":       "cyan",
+        "tijolo":      "yellow",
+        "hibrido":     "magenta",
+        "desconhecido":"dim"
+    }
+    cor_tipo = cores_tipo.get(tipo, "white")
+    table.add_row("Tipo do Fundo", f"[{cor_tipo}]{tipo.upper()}[/{cor_tipo}]", "🏷️")
+
+    for chave, label in labels.items():
+        valor = indicadores.get(chave)
+        if valor is not None:
+            cor = alertas.get(chave, lambda v: "white")(valor)
+            table.add_row(label, f"[{cor}]{valor}[/{cor}]", "✅")
+        else:
+            table.add_row(label, "[dim]—[/dim]", "[red]❌[/red]")
+
+    console.print()
+    console.print(table)
+    console.print()
+
+
+def exibir_analise(analise: str, ticker: str):
+    console.print(Rule(f"[bold green] Análise IA — {ticker} [/bold green]", style="green"))
+    console.print()
+
+    secoes = {
+        "PONTOS FORTES": ("green", "💪"),
+        "PONTOS FRACOS": ("red", "⚠️"),
+        "RISCOS": ("red", "⚠️"),
+        "ANÁLISE DOS INDICADORES": ("cyan", "📈"),
+        "TENDÊNCIA": ("yellow", "📉"),
+        "RECOMENDAÇÃO FINAL": ("bold magenta", "🎯"),
+    }
+
+    linhas = analise.split("\n")
+    secao_atual = None
+    buffer = []
+
+    def flush_buffer(secao, buf):
+        if not buf:
+            return
+        cor, emoji = secoes.get(secao, ("white", "•"))
+        conteudo = "\n".join(buf).strip()
+        if conteudo:
+            console.print(Panel(
+                conteudo,
+                title=f"{emoji} {secao}",
+                border_style=cor,
+                padding=(0, 2),
+            ))
+            console.print()
+
+    for linha in linhas:
+        linha_upper = linha.upper().strip().lstrip("#").strip()
+        encontrou = False
+        for chave in secoes:
+            if chave in linha_upper:
+                flush_buffer(secao_atual, buffer)
+                secao_atual = chave
+                buffer = []
+                encontrou = True
+                break
+        if not encontrou and secao_atual:
+            # limpa markdown básico
+            linha_limpa = linha.replace("**", "").replace("*", "•").strip()
+            if linha_limpa:
+                buffer.append(linha_limpa)
+
+    flush_buffer(secao_atual, buffer)
+
+
+def exibir_resumo_final(ticker: str, indicadores: dict, analise: str):
+    recomendacao = "—"
+    cor_rec = "white"
+    for linha in analise.split("\n"):
+        l = linha.upper()
+        if "CONTINUAR" in l:
+            recomendacao = "✅ CONTINUAR"
+            cor_rec = "bold green"
+            break
+        elif "REDUZIR" in l:
+            recomendacao = "⚠️  REDUZIR"
+            cor_rec = "bold yellow"
+            break
+        elif "VENDER" in l:
+            recomendacao = "🔴 VENDER"
+            cor_rec = "bold red"
+            break
+
+    dy = indicadores.get("dy_mensal")
+    vac = indicadores.get("vacancia")
+    pvp = indicadores.get("pvp")
+
+    resumo = Table(box=box.SIMPLE_HEAVY, border_style="magenta", show_header=False)
+    resumo.add_column("Campo", style="dim", min_width=20)
+    resumo.add_column("Valor", style="bold white")
+
+    resumo.add_row("Ticker", f"[bold cyan]{ticker}[/bold cyan]")
+    resumo.add_row("DY Mensal", f"[green]{dy}%[/green]" if dy else "[dim]n/d[/dim]")
+    resumo.add_row("Vacância", f"[red]{vac}%[/red]" if vac else "[dim]n/d[/dim]")
+    resumo.add_row("P/VP", str(pvp) if pvp else "[dim]n/d[/dim]")
+    resumo.add_row("Recomendação", f"[{cor_rec}]{recomendacao}[/{cor_rec}]")
+
+    console.print(Panel(resumo, title="[bold magenta]📋 Resumo Final[/bold magenta]",
+                        border_style="magenta", padding=(1, 2)))
+
+
+def main(pdf_path: str, ticker: str):
+    exibir_banner()
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold cyan]{task.description}"),
+        transient=True,
+        console=console,
+    ) as progress:
+        t1 = progress.add_task("Extraindo texto e tabelas do PDF...", total=None)
+        dados = extrair_texto_completo(pdf_path)
+        indicadores = extrair_indicadores_chave(dados["texto_completo"])
+        progress.remove_task(t1)
+
+    exibir_indicadores(indicadores, ticker)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold green]{task.description}"),
+        transient=True,
+        console=console,
+    ) as progress:
+        t2 = progress.add_task("Analisando com IA...", total=None)
+        historico = carregar_historico(ticker)
+        analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico)
+        progress.remove_task(t2)
+
+    exibir_analise(analise, ticker)
+    exibir_resumo_final(ticker, indicadores, analise)
+
+    salvar_analise(ticker, indicadores, analise)
+
+    with open(f"relatorios/{ticker}_analise.txt", "w", encoding="utf-8") as f:
+        f.write(analise)
+
+    console.print(Rule(style="dim"))
+    console.print(f"[dim]✅ Histórico salvo · Relatório em [cyan]relatorios/{ticker}_analise.txt[/cyan][/dim]")
+    console.print()
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        console.print(Panel(
+            "[bold]Uso:[/bold] python main.py [cyan]<caminho_pdf>[/cyan] [green]<TICKER>[/green]\n"
+            "[dim]Ex:  python main.py relatorios/hglg11.pdf HGLG11[/dim]",
+            title="❓ Como usar",
+            border_style="yellow"
+        ))
+    else:
+        main(sys.argv[1], sys.argv[2])
