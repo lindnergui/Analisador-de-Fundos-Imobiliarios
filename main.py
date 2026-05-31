@@ -180,6 +180,22 @@ def exibir_analise(analise: str, ticker: str):
     flush_buffer(secao_atual, buffer)
 
 
+def extrair_recomendacao(analise: str):
+    recomendacao = "—"
+    for linha in analise.split("\n"):
+        l = linha.upper()
+        if "CONTINUAR" in l:
+            recomendacao = "✅ CONTINUAR"
+            break
+        elif "REDUZIR" in l:
+            recomendacao = "⚠️  REDUZIR"
+            break
+        elif "VENDER" in l:
+            recomendacao = "🔴 VENDER"
+            break
+    return recomendacao
+
+
 def exibir_resumo_final(ticker: str, indicadores: dict, analise: str, pontuacao: dict):
     recomendacao = "—"
     cor_rec = "white"
@@ -217,6 +233,46 @@ def exibir_resumo_final(ticker: str, indicadores: dict, analise: str, pontuacao:
                         border_style="magenta", padding=(1, 2)))
 
 
+def processar_fii(pdf_path: str, ticker: str) -> dict:
+    dados = extrair_texto_completo(pdf_path)
+    indicadores = extrair_indicadores_chave(dados["texto_completo"])
+    pontuacao = avaliar_pontuacao(indicadores)
+
+    tipo_fundo = indicadores.get("tipo_fundo", "desconhecido")
+    metricas_derivadas = calcular_metricas_derivadas(indicadores, tipo_fundo)
+
+    historico = carregar_historico(ticker)
+    novo_ticker = not ticker_existe(ticker)
+
+    if tem_analise_este_mes(ticker):
+        raise ValueError(f"Análise do mês atual já existe para {ticker}")
+
+    incluir_tendencia = not novo_ticker
+    indicadores["pontuacao"] = pontuacao
+    analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico, incluir_tendencia=incluir_tendencia)
+
+    salvar_analise(ticker, indicadores, analise)
+
+    import os
+    os.makedirs("relatorios", exist_ok=True)
+    with open(f"relatorios/{ticker}_analise.txt", "w", encoding="utf-8") as f:
+        f.write(analise)
+
+    recomendacao = extrair_recomendacao(analise)
+
+    return {
+        "ticker": ticker,
+        "indicadores": indicadores,
+        "pontuacao": pontuacao,
+        "metricas_derivadas": metricas_derivadas,
+        "tipo_fundo": tipo_fundo,
+        "analise": analise,
+        "recomendacao": recomendacao,
+        "novo_ticker": novo_ticker,
+        "relatorio_path": f"relatorios/{ticker}_analise.txt"
+    }
+
+
 def main(pdf_path: str, ticker: str):
     exibir_banner()
 
@@ -226,55 +282,27 @@ def main(pdf_path: str, ticker: str):
         transient=True,
         console=console,
     ) as progress:
-        t1 = progress.add_task("Extraindo texto e tabelas do PDF...", total=None)
-        dados = extrair_texto_completo(pdf_path)
-        indicadores = extrair_indicadores_chave(dados["texto_completo"])
-        pontuacao = avaliar_pontuacao(indicadores)
+        t1 = progress.add_task("Extraindo e analisando PDF...", total=None)
+        resultado = processar_fii(pdf_path, ticker)
         progress.remove_task(t1)
+
+    indicadores = resultado["indicadores"]
+    pontuacao = resultado["pontuacao"]
+    metricas_derivadas = resultado["metricas_derivadas"]
+    tipo_fundo = resultado["tipo_fundo"]
+    analise = resultado["analise"]
 
     exibir_indicadores(indicadores, ticker)
     exibir_pontuacao(pontuacao, ticker)
 
-    # ✨ Calcular e exibir métricas derivadas
-    tipo_fundo = indicadores.get("tipo_fundo", "desconhecido")
-    metricas_derivadas = calcular_metricas_derivadas(indicadores, tipo_fundo)
     tabela_metricas = exibir_metricas_console(indicadores, metricas_derivadas, tipo_fundo)
     console.print(tabela_metricas)
-
-    # Verificar histórico e duplicatas
-    historico = carregar_historico(ticker)
-    novo_ticker = not ticker_existe(ticker)
-
-    if novo_ticker:
-        console.print(f"[cyan]ℹ️  Novo ticker detectado: {ticker} (primeira análise, sem tendência)[/cyan]\n")
-        incluir_tendencia = False
-    elif tem_analise_este_mes(ticker):
-        console.print(f"[yellow]⚠️  Análise do mês atual já existe para {ticker}. Descartando duplicata.[/yellow]\n")
-        return
-    else:
-        incluir_tendencia = True
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[bold green]{task.description}"),
-        transient=True,
-        console=console,
-    ) as progress:
-        t2 = progress.add_task("Analisando com IA...", total=None)
-        indicadores["pontuacao"] = pontuacao
-        analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico, incluir_tendencia=incluir_tendencia)
-        progress.remove_task(t2)
 
     exibir_analise(analise, ticker)
     exibir_resumo_final(ticker, indicadores, analise, pontuacao)
 
-    salvar_analise(ticker, indicadores, analise)
-
-    with open(f"relatorios/{ticker}_analise.txt", "w", encoding="utf-8") as f:
-        f.write(analise)
-
     console.print(Rule(style="dim"))
-    console.print(f"[dim]✅ Histórico salvo · Relatório em [cyan]relatorios/{ticker}_analise.txt[/cyan][/dim]")
+    console.print(f"[dim]✅ Histórico salvo · Relatório em [cyan]{resultado['relatorio_path']}[/cyan][/dim]")
     console.print()
 
 
