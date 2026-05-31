@@ -241,25 +241,25 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                     for secao in secoes:
                         if secao in linha_upper:
                             if buffer and secao_atual:
-                                conteudo = "\n".join(buffer).strip()
+                                conteudo = "\n".join(buffer).strip().replace("`", "")
                                 if conteudo:
                                     with st.expander(f"**{secao_atual}**", expanded=secao_atual == "RECOMENDAÇÃO FINAL"):
-                                        st.markdown(conteudo)
+                                        st.write(conteudo)
                             buffer = []
                             secao_atual = secao
                             encontrou = True
                             break
 
                     if not encontrou and secao_atual:
-                        linha_limpa = linha.replace("**", "").replace("*", "•").strip()
+                        linha_limpa = linha.replace("**", "").replace("*", "•").replace("`", "").strip()
                         if linha_limpa:
                             buffer.append(linha_limpa)
 
                 if buffer and secao_atual:
-                    conteudo = "\n".join(buffer).strip()
+                    conteudo = "\n".join(buffer).strip().replace("`", "")
                     if conteudo:
                         with st.expander(f"**{secao_atual}**", expanded=secao_atual == "RECOMENDAÇÃO FINAL"):
-                            st.markdown(conteudo)
+                            st.write(conteudo)
 
             with tabs[4]:
                 st.subheader("📋 Resumo Final")
