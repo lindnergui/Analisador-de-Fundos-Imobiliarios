@@ -10,7 +10,7 @@ from rich.bar import Bar
 
 from extrator import extrair_texto_completo, extrair_indicadores_chave
 from analisador import analisar_fii
-from historico import salvar_analise, carregar_historico
+from historico import salvar_analise, carregar_historico, ticker_existe, tem_analise_este_mes
 from score import avaliar_pontuacao
 
 console = Console()
@@ -234,6 +234,19 @@ def main(pdf_path: str, ticker: str):
     exibir_indicadores(indicadores, ticker)
     exibir_pontuacao(pontuacao, ticker)
 
+    # Verificar histórico e duplicatas
+    historico = carregar_historico(ticker)
+    novo_ticker = not ticker_existe(ticker)
+
+    if novo_ticker:
+        console.print(f"[cyan]ℹ️  Novo ticker detectado: {ticker} (primeira análise, sem tendência)[/cyan]\n")
+        incluir_tendencia = False
+    elif tem_analise_este_mes(ticker):
+        console.print(f"[yellow]⚠️  Análise do mês atual já existe para {ticker}. Descartando duplicata.[/yellow]\n")
+        return
+    else:
+        incluir_tendencia = True
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[bold green]{task.description}"),
@@ -241,9 +254,8 @@ def main(pdf_path: str, ticker: str):
         console=console,
     ) as progress:
         t2 = progress.add_task("Analisando com IA...", total=None)
-        historico = carregar_historico(ticker)
         indicadores["pontuacao"] = pontuacao
-        analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico)
+        analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico, incluir_tendencia=incluir_tendencia)
         progress.remove_task(t2)
 
     exibir_analise(analise, ticker)

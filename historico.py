@@ -32,3 +32,23 @@ def carregar_historico(ticker: str) -> list:
         return []
     with open(caminho, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def ticker_existe(ticker: str) -> bool:
+    """Verifica se há histórico salvo para este ticker."""
+    caminho = os.path.join(HISTORICO_DIR, f"{ticker}.json")
+    return os.path.exists(caminho)
+
+
+def tem_analise_este_mes(ticker: str) -> bool:
+    """Verifica se há análise do mês/ano atual para este ticker."""
+    historico = carregar_historico(ticker)
+    if not historico:
+        return False
+
+    ultima_analise = historico[-1]
+    ultima_data = datetime.fromisoformat(ultima_analise["data"])
+    hoje = datetime.now()
+
+    return (ultima_data.year == hoje.year and
+            ultima_data.month == hoje.month)

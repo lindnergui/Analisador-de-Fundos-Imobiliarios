@@ -802,6 +802,7 @@ REGRAS ABSOLUTAS:
 3. NUNCA invente, estime, calcule ou suponha valores. Só retorne o que está escrito.
 4. Não inclua unidades, apenas o número.
 5. Use ponto como separador decimal (ex: 14.5, não 14,5).
+6. PROIBIDO procurar informações na internet. Use APENAS o texto fornecido.
 
 CAMPOS A ENCONTRAR:
 {campos_desc}

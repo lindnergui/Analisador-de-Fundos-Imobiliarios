@@ -11,9 +11,9 @@ client = OpenAI(
 )
 
 
-def analisar_fii(ticker: str, texto_pdf: str, indicadores: dict, historico: list) -> str:
+def analisar_fii(ticker: str, texto_pdf: str, indicadores: dict, historico: list, incluir_tendencia: bool = True) -> str:
     historico_str = ""
-    if historico:
+    if historico and incluir_tendencia:
         ultimas = historico[-3:]
         historico_str = f"""
 ## Histórico das últimas {len(ultimas)} análises:
@@ -63,8 +63,9 @@ Este é um FUNDO DE FUNDOS/TVM. Foque em:
 
 ## REGRAS CRÍTICAS:
 1. Use SOMENTE os dados fornecidos abaixo. NUNCA invente ou assuma números.
-2. Se um indicador estiver como null, diga explicitamente que não foi encontrado no relatório.
-3. Base toda recomendação nos números extraídos, com raciocínio explícito.
+2. PROIBIDO procurar informações na internet. Use APENAS relatório + histórico fornecidos.
+3. Se um indicador estiver como null, diga explicitamente que não foi encontrado no relatório.
+4. Base toda recomendação nos números extraídos, com raciocínio explícito.
 
 ## Ticker analisado: {ticker}
 
@@ -81,8 +82,7 @@ Este é um FUNDO DE FUNDOS/TVM. Foque em:
 ### 1. PONTOS FORTES
 ### 2. PONTOS FRACOS / RISCOS
 ### 3. ANÁLISE DOS INDICADORES
-### 4. TENDÊNCIA (se houver histórico)
-### 5. RECOMENDAÇÃO FINAL: CONTINUAR / REDUZIR / VENDER
+""" + ("### 4. TENDÊNCIA (baseada no histórico fornecido)\n### 5. RECOMENDAÇÃO FINAL: CONTINUAR / REDUZIR / VENDER" if incluir_tendencia else "### 4. RECOMENDAÇÃO FINAL: CONTINUAR / REDUZIR / VENDER") + """
 
 Seja direto. Justifique tudo com os números fornecidos."""
 
