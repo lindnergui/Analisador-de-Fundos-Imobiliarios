@@ -2,7 +2,7 @@ import json
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from analisa_enriquecida import (
+from core.analisa_enriquecida import (
     calcular_metricas_derivadas,
     gerar_contexto_analise
 )

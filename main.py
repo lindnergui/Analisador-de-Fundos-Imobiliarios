@@ -8,11 +8,11 @@ from rich import box
 from rich.rule import Rule
 from rich.bar import Bar
 
-from extrator import extrair_texto_completo, extrair_indicadores_chave
-from analisador import analisar_fii
-from historico import salvar_analise, carregar_historico, ticker_existe, tem_analise_este_mes
-from analisa_enriquecida import calcular_metricas_derivadas, exibir_metricas_console
-from score import avaliar_pontuacao
+from core.extrator import extrair_texto_completo, extrair_indicadores_chave
+from core.analisador import analisar_fii
+from historico.historico import salvar_analise, carregar_historico, ticker_existe, tem_analise_este_mes
+from core.analisa_enriquecida import calcular_metricas_derivadas, exibir_metricas_console
+from core.score import avaliar_pontuacao
 
 console = Console()
 

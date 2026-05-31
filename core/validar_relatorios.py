@@ -1,7 +1,7 @@
 import sys
 
-from extrator import extrair_indicadores_chave, extrair_texto_completo
-from score import avaliar_pontuacao
+from core.extrator import extrair_indicadores_chave, extrair_texto_completo
+from core.score import avaliar_pontuacao
 
 
 CAMPOS = [
