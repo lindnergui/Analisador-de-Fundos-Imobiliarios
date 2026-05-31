@@ -6,10 +6,12 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.text import Text
 from rich import box
 from rich.rule import Rule
+from rich.bar import Bar
 
 from extrator import extrair_texto_completo, extrair_indicadores_chave
 from analisador import analisar_fii
 from historico import salvar_analise, carregar_historico
+from score import avaliar_pontuacao
 
 console = Console()
 
@@ -58,10 +60,20 @@ def exibir_indicadores(indicadores: dict, ticker: str):
         "papel":       "cyan",
         "tijolo":      "yellow",
         "hibrido":     "magenta",
+        "fof":         "blue",
         "desconhecido":"dim"
     }
     cor_tipo = cores_tipo.get(tipo, "white")
-    table.add_row("Tipo do Fundo", f"[{cor_tipo}]{tipo.upper()}[/{cor_tipo}]", "🏷️")
+    confianca = indicadores.get("tipo_confianca")
+    if confianca is not None:
+        valor_tipo = f"[{cor_tipo}]{tipo.upper()}[/{cor_tipo}] [dim]({confianca:.0%})[/dim]"
+    else:
+        valor_tipo = f"[{cor_tipo}]{tipo.upper()}[/{cor_tipo}]"
+    table.add_row("Tipo do Fundo", valor_tipo, "🏷️")
+
+    evidencias = indicadores.get("tipo_evidencias") or []
+    if evidencias:
+        table.add_row("Evidência do Tipo", f"[dim]{evidencias[0]}[/dim]", "🔎")
 
     for chave, label in labels.items():
         valor = indicadores.get(chave)
@@ -72,6 +84,47 @@ def exibir_indicadores(indicadores: dict, ticker: str):
             table.add_row(label, "[dim]—[/dim]", "[red]❌[/red]")
 
     console.print()
+    console.print(table)
+    console.print()
+
+
+def exibir_pontuacao(pontuacao: dict, ticker: str):
+    cor = pontuacao["cor"]
+    percentual = pontuacao["percentual"]
+
+    resumo = Text()
+    resumo.append(f"{pontuacao['conceito']} ", style=f"bold {cor}")
+    resumo.append(f"({pontuacao['total']}/{pontuacao['max']} pts · {percentual:.1f}%)", style="white")
+
+    console.print(Panel(
+        Bar(size=100, begin=0, end=percentual, width=40, color=cor),
+        title=f"[bold {cor}]Pontuação Conservadora — {ticker}[/bold {cor}]",
+        subtitle=resumo,
+        border_style=cor,
+        padding=(1, 2),
+    ))
+
+    table = Table(
+        title="Fatores Pontuados",
+        box=box.ROUNDED,
+        border_style=cor,
+        header_style=f"bold {cor}",
+        show_lines=True,
+    )
+    table.add_column("Fator", style="bold white", min_width=24)
+    table.add_column("Pontos", justify="right", min_width=10)
+    table.add_column("Detalhe", style="white")
+
+    for item in pontuacao["itens"]:
+        pontos = item["pontos"]
+        maximo = item["max"]
+        item_cor = "green" if pontos >= maximo * 0.75 else "yellow" if pontos > 0 else "red"
+        table.add_row(
+            item["fator"],
+            f"[{item_cor}]{pontos}/{maximo}[/{item_cor}]",
+            item["detalhe"],
+        )
+
     console.print(table)
     console.print()
 
@@ -126,7 +179,7 @@ def exibir_analise(analise: str, ticker: str):
     flush_buffer(secao_atual, buffer)
 
 
-def exibir_resumo_final(ticker: str, indicadores: dict, analise: str):
+def exibir_resumo_final(ticker: str, indicadores: dict, analise: str, pontuacao: dict):
     recomendacao = "—"
     cor_rec = "white"
     for linha in analise.split("\n"):
@@ -156,6 +209,7 @@ def exibir_resumo_final(ticker: str, indicadores: dict, analise: str):
     resumo.add_row("DY Mensal", f"[green]{dy}%[/green]" if dy else "[dim]n/d[/dim]")
     resumo.add_row("Vacância", f"[red]{vac}%[/red]" if vac else "[dim]n/d[/dim]")
     resumo.add_row("P/VP", str(pvp) if pvp else "[dim]n/d[/dim]")
+    resumo.add_row("Score", f"[{pontuacao['cor']}]{pontuacao['percentual']:.1f}% · {pontuacao['conceito']}[/{pontuacao['cor']}]")
     resumo.add_row("Recomendação", f"[{cor_rec}]{recomendacao}[/{cor_rec}]")
 
     console.print(Panel(resumo, title="[bold magenta]📋 Resumo Final[/bold magenta]",
@@ -174,9 +228,11 @@ def main(pdf_path: str, ticker: str):
         t1 = progress.add_task("Extraindo texto e tabelas do PDF...", total=None)
         dados = extrair_texto_completo(pdf_path)
         indicadores = extrair_indicadores_chave(dados["texto_completo"])
+        pontuacao = avaliar_pontuacao(indicadores)
         progress.remove_task(t1)
 
     exibir_indicadores(indicadores, ticker)
+    exibir_pontuacao(pontuacao, ticker)
 
     with Progress(
         SpinnerColumn(),
@@ -186,11 +242,12 @@ def main(pdf_path: str, ticker: str):
     ) as progress:
         t2 = progress.add_task("Analisando com IA...", total=None)
         historico = carregar_historico(ticker)
+        indicadores["pontuacao"] = pontuacao
         analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico)
         progress.remove_task(t2)
 
     exibir_analise(analise, ticker)
-    exibir_resumo_final(ticker, indicadores, analise)
+    exibir_resumo_final(ticker, indicadores, analise, pontuacao)
 
     salvar_analise(ticker, indicadores, analise)
 

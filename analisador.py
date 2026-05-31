@@ -45,6 +45,15 @@ Este é um FUNDO HÍBRIDO. Analise:
 - Recebíveis: adimplência, qualidade de crédito
 - Equilíbrio entre as duas carteiras
 """
+    elif tipo == "fof":
+        foco_analise = """
+Este é um FUNDO DE FUNDOS/TVM. Foque em:
+- Qualidade e diversificação da carteira de FIIs
+- Desconto ou prêmio frente ao valor patrimonial
+- Recorrência dos rendimentos e ganhos de capital
+- Giro da carteira, concentração por segmento e liquidez
+- NÃO trate vacância física como indicador direto do fundo
+"""
     else:
         foco_analise = "Analise todos os indicadores disponíveis."
     prompt = f"""Você é um analista especializado em Fundos de Investimento Imobiliário (FIIs) brasileiro.

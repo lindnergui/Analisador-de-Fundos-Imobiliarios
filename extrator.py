@@ -24,7 +24,7 @@ LIMITES = {
     "pvp":                 (0.1,    5.0),   # ratio
     "ultimo_rendimento":   (0.001, 50.0),   # R$/cota
     "resultado_mensal":    (0.001, 50.0),   # R$/cota
-    "num_cotas":           (1_000, 1e10),   # unidades
+    "num_cotas":           (100_000, 1e10), # unidades
     "valor_mercado_bi":    (0.001, 500.0),  # R$ bilhões
     "valor_patrimonial_bi":(0.001, 500.0),  # R$ bilhões
     "taxa_liquida_ipca":   (0.1,   30.0),   # % a.a.
@@ -68,7 +68,8 @@ def _num(texto: str) -> float | None:
     if not texto:
         return None
     try:
-        limpo = texto.strip().replace(".", "").replace(",", ".")
+        limpo = re.sub(r"\s+", "", texto.strip())
+        limpo = limpo.replace(".", "").replace(",", ".")
         return float(limpo)
     except Exception:
         return None
@@ -93,60 +94,140 @@ def _validar(campo: str, valor) -> float | None:
 
     return round(v, 4)
 
-def detectar_tipo_fundo(texto: str) -> str:
+
+NUM_BR = r'(\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:,\d+)?)'
+
+
+def _buscar_numero_contextual(texto: str, padrao: str, grupo: int = 1) -> float | None:
+    m = re.search(padrao, texto, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return None
+    return _num(m.group(grupo))
+
+
+def _em_bilhoes(valor) -> float | None:
+    v = _num(valor) if isinstance(valor, str) else valor
+    if v is None:
+        return None
+    return v / 1_000_000_000 if v > 500 else v
+
+
+def detectar_tipo_fundo_detalhado(texto: str) -> dict:
     texto_lower = texto.lower()
+    evidencias = []
 
-    # Palavras EXCLUSIVAS de papel (quase nunca aparecem em tijolo)
-    exclusivas_papel = {
-        'certificado de recebível imobiliário': 10,
-        'cri': 3,
-        'duration': 5,
-        'marcação a mercado': 5,
-        'adimplência': 4,
-        'devedor': 3,
-        'spread de crédito': 5,
-        'taxa de juros': 2,
-        'lci': 3,
-        'inadimplência': 4,
+    # A classificação/tipo ANBIMA costuma ser a melhor fonte quando existe.
+    # Se vier "Papel Híbrido Gestão Ativa", "Papel" é o tipo econômico e
+    # "Híbrido/Gestão Ativa" descreve estratégia ou mandato.
+    match_anbima = re.search(
+        r'(?:classifica[çc][ãa]o\s+anbima|tipo\s+anbima)[:\s]*(.{0,180})',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if match_anbima:
+        trecho = " ".join(match_anbima.group(1).split())
+        trecho_lower = trecho.lower()
+        if "papel" in trecho_lower:
+            return {
+                "tipo_fundo": "papel",
+                "confianca": 0.98,
+                "evidencias": ["Classificação ANBIMA contém Papel"],
+            }
+        if "tijolo" in trecho_lower:
+            return {
+                "tipo_fundo": "tijolo",
+                "confianca": 0.98,
+                "evidencias": ["Classificação ANBIMA contém Tijolo"],
+            }
+        if "tvm" in trecho_lower or "títulos e valores mobiliários" in trecho_lower:
+            return {
+                "tipo_fundo": "fof",
+                "confianca": 0.95,
+                "evidencias": ["Tipo ANBIMA indica TVM/Fundo de Fundos"],
+            }
+
+    if re.search(r'fundo\s+de\s+fundos|cotas\s+de\s+outros\s+fii', texto_lower):
+        return {
+            "tipo_fundo": "fof",
+            "confianca": 0.9,
+            "evidencias": ["Relatório indica investimento em cotas de outros FIIs"],
+        }
+
+    padroes_papel = {
+        r'\bcarteira\s+de\s+cris?\b': 18,
+        r'\btir\s+carteira\s+de\s+cris?\b': 16,
+        r'\b%[\s\w]*cris?\b': 10,
+        r'\bcris?\b': 2,
+        r'certificados?\s+de\s+receb[ií]veis?\s+imobili[aá]rios?': 18,
+        r'receb[ií]veis?\s+imobili[aá]rios?': 14,
+        r'\bdevedores?\b': 6,
+        r'\badimpl[eê]ncia\b|\badimplentes?\b': 8,
+        r'\binadimpl[eê]ncia\b|\binadimplentes?\b': 8,
+        r'marca[çc][ãa]o\s+a\s+mercado|\bmtm\b': 8,
+        r'\bduration\b': 7,
+        r'spread\s+de\s+cr[eé]dito': 7,
+        r'taxa\s+l[ií]quida.*ipca|ipca\s*\+': 5,
+        r'\bsecurities\b': 8,
+    }
+    padroes_tijolo = {
+        r'\bvac[âa]ncia\s+f[ií]sica\b': 12,
+        r'\bvac[âa]ncia\s+financeira\b': 12,
+        r'\b[aá]rea\s+bruta\s+loc[aá]vel\b': 12,
+        r'\babl\b': 4,
+        r'\binquilinos?\b': 8,
+        r'\blocat[áa]rios?\b': 8,
+        r'contratos?\s+de\s+loca[çc][ãa]o': 10,
+        r'receita\s+de\s+loca[çc][ãa]o': 10,
+        r'\bcap\s+rate\b': 8,
+        r'taxa\s+de\s+ocupa[çc][ãa]o': 8,
+        r'\bgalp(?:[ãa]o|ões|oes)\b': 6,
+        r'lajes?\s+corporativas?': 8,
+        r'\bshopping(?:s)?\b': 5,
     }
 
-    # Palavras EXCLUSIVAS de tijolo (quase nunca aparecem em papel)
-    exclusivas_tijolo = {
-        'área bruta locável': 10,
-        'abl': 5,
-        'vacância': 6,
-        'inquilino': 6,
-        'locatário': 6,
-        'contrato de locação': 8,
-        'revisional': 5,
-        'cap rate': 7,
-        'taxa de ocupação': 6,
-        'galpão': 5,
-        'laje corporativa': 8,
-        'shopping': 4,
-    }
+    pontos_papel = 0
+    pontos_tijolo = 0
 
-    pontos_papel = sum(
-        peso * texto_lower.count(palavra)
-        for palavra, peso in exclusivas_papel.items()
-    )
-    pontos_tijolo = sum(
-        peso * texto_lower.count(palavra)
-        for palavra, peso in exclusivas_tijolo.items()
-    )
+    for padrao, peso in padroes_papel.items():
+        ocorrencias = len(re.findall(padrao, texto_lower, re.IGNORECASE))
+        if ocorrencias:
+            pontos_papel += peso * ocorrencias
+            evidencias.append(f"papel: {padrao} ({ocorrencias}x)")
+
+    for padrao, peso in padroes_tijolo.items():
+        ocorrencias = len(re.findall(padrao, texto_lower, re.IGNORECASE))
+        if ocorrencias:
+            pontos_tijolo += peso * ocorrencias
+            evidencias.append(f"tijolo: {padrao} ({ocorrencias}x)")
 
     total = pontos_papel + pontos_tijolo
     if total == 0:
-        return 'desconhecido'
+        return {
+            "tipo_fundo": "desconhecido",
+            "confianca": 0.0,
+            "evidencias": [],
+        }
 
     ratio_papel = pontos_papel / total
+    confianca = max(ratio_papel, 1 - ratio_papel)
 
-    if ratio_papel >= 0.75:
-        return 'papel'
-    elif ratio_papel <= 0.25:
-        return 'tijolo'
+    if ratio_papel >= 0.65:
+        tipo = 'papel'
+    elif ratio_papel <= 0.35:
+        tipo = 'tijolo'
     else:
-        return 'hibrido'
+        tipo = 'hibrido'
+        confianca = 1 - abs(0.5 - ratio_papel) * 2
+
+    return {
+        "tipo_fundo": tipo,
+        "confianca": round(confianca, 2),
+        "evidencias": evidencias[:6],
+    }
+
+
+def detectar_tipo_fundo(texto: str) -> str:
+    return detectar_tipo_fundo_detalhado(texto)["tipo_fundo"]
 
 
 # ─────────────────────────────────────────────
@@ -160,13 +241,14 @@ def _extrair_via_regex(texto: str) -> dict:
         "dy_mensal": [
             r'[Dd]ividend\s+[Yy]ield\s*[\(\[]?[Mm]ensal[\)\]]?\s*[:\-]?\s*(\d{1,2}[.,]\d{1,4})\s*%',
             r'DY\s*[Mm]ensal\s*[:\-]?\s*(\d{1,2}[.,]\d{1,4})\s*%',
-            r'[Dd]ividend\s+[Yy]ield\s*[:\-]?\s*(\d{1,2}[.,]\d{1,4})\s*%',
         ],
         # DY 12 meses
         "dy_anual": [
             r'(\d{1,2}[.,]\d{1,2})\s*%\s*[úu]ltimos?\s*12\s*meses',
             r'DY\s*12\s*[Mm]eses?\s*[:\-]?\s*(\d{1,2}[.,]\d{1,4})\s*%',
             r'[úu]ltimos?\s*12\s*meses\s*[:\-]?\s*(\d{1,2}[.,]\d{1,4})\s*%',
+            r'[Dd]ividend\s+[Yy]ield\s+anualizado\s+de\s+(\d{1,2}[.,]\d{1,4})\s*%',
+            r'anualizado\s+de\s+(\d{1,2}[.,]\d{1,4})\s*%',
         ],
         # Cota de mercado
         "cota_mercado": [
@@ -245,6 +327,289 @@ def _extrair_via_regex(texto: str) -> dict:
                     ind[campo] = valor
                     break
 
+    # ── PADRÕES DE CARDS/TABELAS EM DUAS COLUNAS ─────────────────
+    # Relatórios costumam mostrar "Rótulo A Rótulo B" e, abaixo,
+    # "Valor A Valor B". Isso cobre cards financeiros/imobiliários
+    # sem depender de um layout específico de uma gestora.
+    m = re.search(
+        rf'PATRIM[ÔO]NIO\s+L[ÍI]QUIDO.{{0,140}}?R\$\s*{NUM_BR}\s*(bilh(?:[oõ]es|[aã]o))?',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["valor_patrimonial_bi"] is None:
+        valor = _num(m.group(1))
+        if m.group(2) or (valor is not None and valor > 500):
+            ind["valor_patrimonial_bi"] = _validar("valor_patrimonial_bi", _em_bilhoes(valor))
+
+    m = re.search(
+        rf'COTA\s+PATRIMONIAL(?:\s+EM\s+\d{{2}}/\d{{2}}/\d{{2,4}})?'
+        rf'.{{0,120}}?R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["cota_patrimonial"] = _validar("cota_patrimonial", _num(m.group(1)))
+
+    m = re.search(
+        rf'COTA\s+(?:DE\s+)?MERCADO(?:\s+EM\s+\d{{2}}/\d{{2}}/\d{{2,4}})?'
+        rf'.{{0,120}}?R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["cota_mercado"] = _validar("cota_mercado", _num(m.group(1)))
+
+    m = re.search(
+        rf'VALOR\s+PATRIMONIAL.{{0,80}}?R\$\s*{NUM_BR}\s*(bi|bilh(?:[oõ]es|[aã]o))?',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        valor = _num(m.group(1))
+        if m.group(2) or (valor is not None and valor > 500):
+            ind["valor_patrimonial_bi"] = _validar("valor_patrimonial_bi", _em_bilhoes(valor))
+
+    m = re.search(
+        rf'VALOR\s+DE\s+MERCADO.{{0,80}}?R\$\s*{NUM_BR}\s*(bi|bilh(?:[oõ]es|[aã]o))?',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and "VALOR PATRIMONIAL" not in m.group(0).upper():
+        valor = _num(m.group(1))
+        if m.group(2) or (valor is not None and valor > 500):
+            ind["valor_mercado_bi"] = _validar("valor_mercado_bi", _em_bilhoes(valor))
+
+    m = re.search(
+        r'QUANTIDADE\s+DE\s+C\s*OT\s*AS[^\d]{0,120}([\d][\d.\s]*(?:,\d+)?)',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["num_cotas"] = _validar("num_cotas", _num(m.group(1)))
+
+    m = re.search(
+        r'DIVIDENDOS\s+A\s+PAGAR.{0,120}?R\$\s*([\d\s.,]+?)\s*/?\s*cota',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(1)))
+
+    m = re.search(
+        rf'representam\s+uma\s+rentabilidade.{{0,120}}?de\s+{NUM_BR}\s*%',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["dy_mensal"] is None:
+        ind["dy_mensal"] = _validar("dy_mensal", _num(m.group(1)))
+
+    m = re.search(
+        rf'Valor\s+de\s+mercado.*?Distribui[çc][ãa]o\s+de\s+dividendos'
+        rf'.{{0,120}}?R\$\s*{NUM_BR}\s*\(R\$\s*{NUM_BR}\s*/\s*cota\)\s*R\$\s*{NUM_BR}\s*/\s*cota'
+        rf'.{{0,160}}?Valor\s+patrimonial.*?R\$\s*{NUM_BR}\s*\(R\$\s*{NUM_BR}\s*/\s*cota\)',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["valor_mercado_bi"] = _validar("valor_mercado_bi", _em_bilhoes(m.group(1)))
+        ind["cota_mercado"] = _validar("cota_mercado", _num(m.group(2)))
+        ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(3)))
+        ind["valor_patrimonial_bi"] = _validar("valor_patrimonial_bi", _em_bilhoes(m.group(4)))
+        ind["cota_patrimonial"] = _validar("cota_patrimonial", _num(m.group(5)))
+
+    m = re.search(
+        rf'DY:\s*{NUM_BR}\s*%\s*a\.?m\.',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["dy_mensal"] = _validar("dy_mensal", _num(m.group(1)))
+
+    m = re.search(
+        rf'ABL\s+Total\s*\(m[²2]\)\s+{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["area_total"] is None:
+        ind["area_total"] = _validar("area_total", _num(m.group(1)))
+
+    m = re.search(
+        rf'Vac[âa]ncia\s*\(%\s*ABL\).*?{NUM_BR}\s*%',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["vacancia"] is None:
+        ind["vacancia"] = _validar("vacancia", _num(m.group(1)))
+
+    m = re.search(
+        rf'Valor\s+de\s+mercado\s+{NUM_BR}.{{0,100}}?Quantidade\s+de\s+cotas\s+{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["valor_mercado_bi"] = _validar("valor_mercado_bi", _em_bilhoes(m.group(1)))
+        ind["num_cotas"] = _validar("num_cotas", _num(m.group(2)))
+
+    m = re.search(
+        rf'[Aa]\s*cota\s*encerrou\s*o\s*m[eê]s.*?R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["cota_mercado"] = _validar("cota_mercado", _num(m.group(1)))
+
+    m = re.search(
+        rf'RENDIMENTO\s+MENSAL.{{0,80}}?R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(1)))
+
+    m = re.search(
+        rf'aprox\.?\s*{NUM_BR}\s*mil\s+metros\s+de\s+ABL',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["area_total"] = _validar("area_total", _num(m.group(1)) * 1000)
+
+    m = re.search(
+        rf'Cota\s+de\s+Mercado:?\s+Valor\s+de\s+Mercado:?\s+Cota\s+Patrimonial:?'
+        rf'.{{0,120}}?R\$\s*{NUM_BR}\s+R\$\s*{NUM_BR}\s+R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["cota_mercado"] = _validar("cota_mercado", _num(m.group(1)))
+        ind["valor_mercado_bi"] = _validar("valor_mercado_bi", _em_bilhoes(m.group(2)))
+        ind["cota_patrimonial"] = _validar("cota_patrimonial", _num(m.group(3)))
+
+    m = re.search(
+        rf'Valor\s+Patrimonial:?\s+Rendimento\s+no\s+M[eê]s:?\s+Dividend\s+Yield\s+Mensal\s+e'
+        rf'.{{0,160}}?R\$\s*{NUM_BR}\s+R\$\s*{NUM_BR}.{{0,80}}?'
+        rf'{NUM_BR}\s*%\s*/\s*{NUM_BR}\s*%',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["valor_patrimonial_bi"] = _validar("valor_patrimonial_bi", _em_bilhoes(m.group(1)))
+        ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(2)))
+        ind["dy_mensal"] = _validar("dy_mensal", _num(m.group(3)))
+        ind["dy_anual"] = _validar("dy_anual", _num(m.group(4)))
+
+    m = re.search(
+        rf'dividend\s+yield\s+mensal\s+de\s+{NUM_BR}\s*%.*?'
+        rf'anualizado\s+de\s+{NUM_BR}\s*%.*?cota\s+de\s+mercado\s+de\s+R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["dy_mensal"] = _validar("dy_mensal", _num(m.group(1)))
+        ind["dy_anual"] = _validar("dy_anual", _num(m.group(2)))
+        if ind["cota_mercado"] is None or ind["cota_mercado"] < 5:
+            ind["cota_mercado"] = _validar("cota_mercado", _num(m.group(3)))
+
+    m = re.search(
+        rf'[Áá]rea\s+de\s+Terreno.*?[Áá]rea\s+Bruta\s+Loc[aá]vel.*?'
+        rf'{NUM_BR}\s*m[²2]\s+{NUM_BR}\s*m[²2]',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["area_total"] is None:
+        ind["area_total"] = _validar("area_total", _num(m.group(2)))
+
+    m = re.search(
+        rf'Vac[âa]ncia:?.{{0,80}}?F[ií]sica:?\s*{NUM_BR}\s*%.{{0,140}}?Financeira:?\s*{NUM_BR}\s*%',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["vacancia"] = _validar("vacancia", _num(m.group(1)))
+
+    m = re.search(
+        rf'Resultado\s+Operacional\s+por\s+Cota\s+{NUM_BR}\s+{NUM_BR}\s+{NUM_BR}\s+{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["resultado_mensal"] = _validar("resultado_mensal", _num(m.group(4)))
+
+    m = re.search(
+        rf'Patrim[oô]nio\s+L[ií]quido\*?\s+Cota\s+Patrimonial\*?'
+        rf'.{{0,120}}?R\$\s*{NUM_BR}\s*bilh(?:[oõ]es|[aã]o)?\s+R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["valor_patrimonial_bi"] = _validar("valor_patrimonial_bi", _num(m.group(1)))
+        ind["cota_patrimonial"] = _validar("cota_patrimonial", _num(m.group(2)))
+
+    m = re.search(
+        rf'Valor\s+de\s+Mercado\*?\s+Cota\s+de\s+Mercado\*?'
+        rf'.{{0,360}}?R\$\s*{NUM_BR}\s*bilh(?:[oõ]es|[aã]o)?\s+R\$\s*{NUM_BR}',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        ind["valor_mercado_bi"] = _validar("valor_mercado_bi", _num(m.group(1)))
+        ind["cota_mercado"] = _validar("cota_mercado", _num(m.group(2)))
+
+    m = re.search(
+        rf'P\s*/\s*VP\*?\s+ADTV\*?.{{0,360}}?{NUM_BR}\s*x',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["pvp"] is None:
+        ind["pvp"] = _validar("pvp", _num(m.group(1)))
+
+    m = re.search(
+        rf'Dividend\s+Yield.{{0,300}}?'
+        rf'{NUM_BR}\s*%\s*a\.?a\.?.{{0,40}}?{NUM_BR}\s*%\s*a\.?a\.?',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["dy_anual"] is None:
+        ind["dy_anual"] = _validar("dy_anual", _num(m.group(1)))
+
+    m = re.search(
+        rf'ABL\s*\(m[²2]\)\*?.{{0,260}}?{NUM_BR}\s+{NUM_BR}\s*anos?',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["area_total"] is None:
+        ind["area_total"] = _validar("area_total", _num(m.group(1)))
+
+    m = re.search(
+        rf'Vac[âa]ncia\s+F[ií]sica\*?\s+Vac[âa]ncia\s+Financeira\*?'
+        rf'.{{0,260}}?{NUM_BR}\s*%\s+{NUM_BR}\s*%',
+        texto,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m and ind["vacancia"] is None:
+        ind["vacancia"] = _validar("vacancia", _num(m.group(1)))
+
+    valor = _buscar_numero_contextual(
+        texto,
+        rf'Cotas\s+Emitidas?.{{0,220}}?{NUM_BR}(?:\s*[¹²³])?',
+    )
+    if valor is not None and ind["num_cotas"] is None:
+        ind["num_cotas"] = _validar("num_cotas", valor)
+
+    valor = _buscar_numero_contextual(
+        texto,
+        rf'distribui[çc][ãa]o\s+de\s+rendimentos?.{{0,120}}?R\$\s*{NUM_BR}\s*/\s*cota',
+    )
+    if valor is not None:
+        ind["ultimo_rendimento"] = _validar("ultimo_rendimento", valor)
+
+    valor = _buscar_numero_contextual(
+        texto,
+        rf'resultado\s+de\s+R\$.{{0,160}}?{NUM_BR}\s*/\s*cota',
+    )
+    if valor is not None and ind["resultado_mensal"] is None:
+        ind["resultado_mensal"] = _validar("resultado_mensal", valor)
+
     # P/VP calculado se não encontrado explicitamente
     if ind["pvp"] is None and ind["cota_mercado"] and ind["cota_patrimonial"]:
         try:
@@ -291,12 +656,12 @@ def _extrair_via_regex(texto: str) -> dict:
             ind["resultado_mensal"] = _validar("resultado_mensal", _num(m.group(1)))
         if ind["ultimo_rendimento"] is None:
             ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(2)))
-        if ind["dy_mensal"] is None:
-            ind["dy_mensal"] = _validar("dy_mensal", _num(m.group(3)))
+        if ind["dy_anual"] is None:
+            ind["dy_anual"] = _validar("dy_anual", _num(m.group(3)))
 
     # "352.639.199" — número de cotas no formato xxx.xxx.xxx
     m = re.search(
-        r'[Nn][úu]mero\s+de\s+[Cc]otas?.{0,50}?([\d]{3}\.[\d]{3}\.[\d]{3})',
+        r'[Nn][úu]mero\s+de\s+[Cc]otas?.{0,160}?([\d]{1,3}\.[\d]{3}\.[\d]{3})',
         texto, re.DOTALL
     )
     if m and ind["num_cotas"] is None:
@@ -311,7 +676,9 @@ def _extrair_via_regex(texto: str) -> dict:
 
     # ── PADRÕES GENÉRICOS CONTEXTUAIS ──────────────────────────
 
-    # "R$ X por cota" — primeiro = mercado, segundo = patrimonial
+    # "R$ X por cota" — se houver pares, geralmente são mercado/patrimonial.
+    # Um único valor por cota costuma ser distribuição, então não deve virar
+    # cota de mercado.
     if ind["cota_mercado"] is None or ind["cota_patrimonial"] is None:
         matches = re.findall(r'R\$\s*(\d+[.,]\d+)\s*por\s*cota', texto, re.IGNORECASE)
         if len(matches) >= 2:
@@ -319,14 +686,6 @@ def _extrair_via_regex(texto: str) -> dict:
                 ind["cota_mercado"] = _validar("cota_mercado", _num(matches[0]))
             if ind["cota_patrimonial"] is None:
                 ind["cota_patrimonial"] = _validar("cota_patrimonial", _num(matches[1]))
-        elif len(matches) == 1 and ind["cota_mercado"] is None:
-            ind["cota_mercado"] = _validar("cota_mercado", _num(matches[0]))
-
-    # "R$ X/cota" ou "R$X/cota" — dividendo
-    if ind["ultimo_rendimento"] is None:
-        m = re.search(r'R\$\s*(\d+[.,]\d+)\s*/\s*cota', texto, re.IGNORECASE)
-        if m:
-            ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(1)))
 
     # "distribuição ... R$ X por cota" — dividendo explícito
     if ind["ultimo_rendimento"] is None:
@@ -346,27 +705,56 @@ def _extrair_via_regex(texto: str) -> dict:
         if m:
             ind["ultimo_rendimento"] = _validar("ultimo_rendimento", _num(m.group(1)))
 
-    # DY mensal — "equivalente a um DY a.a. de X%" — pega o mais recente
-    if ind["dy_mensal"] is None:
+    # DY a.a. explícito. O DY mensal, quando possível, é calculado por
+    # rendimento/cota de mercado ao fim da extração.
+    if ind["dy_anual"] is None:
         matches = re.findall(
             r'DY\s+a\.?a\.?\s+de\s+(\d{1,2}[.,]\d{1,2})\s*%',
             texto, re.IGNORECASE
         )
         if matches:
             # usa o primeiro (mais recente no relatório)
-            ind["dy_mensal"] = _validar("dy_mensal", _num(matches[0]))
+            ind["dy_anual"] = _validar("dy_anual", _num(matches[0]))
 
     # Número de cotas — qualquer formato xxx.xxx.xxx próximo de palavras-chave
     if ind["num_cotas"] is None:
         m = re.search(
-            r'(?:cotas?|emitidas?|circula[çc][ãa]o).{0,50}?(\d{1,3}(?:\.\d{3}){2,})',
+            r'(?:n[úu]mero\s+de\s+cotas?|cotas?\s+emitidas?|quantidade\s+de\s+cotas?).{0,160}?(\d{1,3}(?:\.\d{3}){2,})',
             texto, re.IGNORECASE | re.DOTALL
         )
-        if not m:
-            # fallback: número grande isolado (> 100.000 cotas)
-            m = re.search(r'\b(\d{3}\.\d{3}\.\d{3})\b', texto)
         if m:
             ind["num_cotas"] = _validar("num_cotas", _num(m.group(1)))
+
+    if ind["cota_patrimonial"] is None and ind["valor_patrimonial_bi"] and ind["num_cotas"]:
+        cota = ind["valor_patrimonial_bi"] * 1_000_000_000 / ind["num_cotas"]
+        ind["cota_patrimonial"] = _validar("cota_patrimonial", cota)
+
+    if ind["cota_mercado"] is None and ind["valor_mercado_bi"] and ind["num_cotas"]:
+        cota = ind["valor_mercado_bi"] * 1_000_000_000 / ind["num_cotas"]
+        ind["cota_mercado"] = _validar("cota_mercado", cota)
+
+    if ind["num_cotas"] is None and ind["valor_mercado_bi"] and ind["cota_mercado"]:
+        cotas = ind["valor_mercado_bi"] * 1_000_000_000 / ind["cota_mercado"]
+        ind["num_cotas"] = _validar("num_cotas", cotas)
+
+    if ind["num_cotas"] is None and ind["valor_patrimonial_bi"] and ind["cota_patrimonial"]:
+        cotas = ind["valor_patrimonial_bi"] * 1_000_000_000 / ind["cota_patrimonial"]
+        ind["num_cotas"] = _validar("num_cotas", cotas)
+
+    if ind["valor_patrimonial_bi"] is None and ind["num_cotas"] and ind["cota_patrimonial"]:
+        valor = ind["num_cotas"] * ind["cota_patrimonial"] / 1_000_000_000
+        ind["valor_patrimonial_bi"] = _validar("valor_patrimonial_bi", valor)
+
+    if ind["ultimo_rendimento"] and ind["cota_mercado"]:
+        if ind["ultimo_rendimento"] > ind["cota_mercado"] * 0.5:
+            ind["ultimo_rendimento"] = None
+
+    if ind["pvp"] is None and ind["cota_mercado"] and ind["cota_patrimonial"]:
+        ind["pvp"] = _validar("pvp", ind["cota_mercado"] / ind["cota_patrimonial"])
+
+    if ind["dy_mensal"] is None and ind["ultimo_rendimento"] and ind["cota_mercado"]:
+        dy_calc = (ind["ultimo_rendimento"] / ind["cota_mercado"]) * 100
+        ind["dy_mensal"] = _validar("dy_mensal", dy_calc)
 
     return ind
 
@@ -470,6 +858,10 @@ TEXTO DO RELATÓRIO:
 # ─────────────────────────────────────────────
 def extrair_indicadores_chave(texto: str) -> dict:
     indicadores = _extrair_via_regex(texto)
-    indicadores = _extrair_via_ia(texto, indicadores)
-    indicadores["tipo_fundo"] = detectar_tipo_fundo(texto)
+    if os.getenv("USAR_IA_EXTRACAO", "0") == "1":
+        indicadores = _extrair_via_ia(texto, indicadores)
+    tipo = detectar_tipo_fundo_detalhado(texto)
+    indicadores["tipo_fundo"] = tipo["tipo_fundo"]
+    indicadores["tipo_confianca"] = tipo["confianca"]
+    indicadores["tipo_evidencias"] = tipo["evidencias"]
     return indicadores
