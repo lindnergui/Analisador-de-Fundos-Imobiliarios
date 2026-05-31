@@ -2,6 +2,10 @@ import json
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from analisa_enriquecida import (
+    calcular_metricas_derivadas,
+    gerar_contexto_analise
+)
 
 load_dotenv()
 
@@ -12,6 +16,16 @@ client = OpenAI(
 
 
 def analisar_fii(ticker: str, texto_pdf: str, indicadores: dict, historico: list, incluir_tendencia: bool = True) -> str:
+    # ✨ Calcular métricas derivadas
+    tipo = indicadores.get("tipo_fundo", "desconhecido")
+    metricas_derivadas = calcular_metricas_derivadas(indicadores, tipo)
+
+    # ✨ Gerar contexto enriquecido
+    contexto_enriquecido = gerar_contexto_analise(
+        tipo, indicadores, metricas_derivadas, historico if incluir_tendencia else []
+    )
+
+    # Histórico para tendência (se ativado)
     historico_str = ""
     if historico and incluir_tendencia:
         ultimas = historico[-3:]
@@ -66,6 +80,8 @@ Este é um FUNDO DE FUNDOS/TVM. Foque em:
 2. PROIBIDO procurar informações na internet. Use APENAS relatório + histórico fornecidos.
 3. Se um indicador estiver como null, diga explicitamente que não foi encontrado no relatório.
 4. Base toda recomendação nos números extraídos, com raciocínio explícito.
+
+{contexto_enriquecido}
 
 ## Ticker analisado: {ticker}
 

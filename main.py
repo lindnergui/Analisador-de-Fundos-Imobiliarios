@@ -11,6 +11,7 @@ from rich.bar import Bar
 from extrator import extrair_texto_completo, extrair_indicadores_chave
 from analisador import analisar_fii
 from historico import salvar_analise, carregar_historico, ticker_existe, tem_analise_este_mes
+from analisa_enriquecida import calcular_metricas_derivadas, exibir_metricas_console
 from score import avaliar_pontuacao
 
 console = Console()
@@ -233,6 +234,12 @@ def main(pdf_path: str, ticker: str):
 
     exibir_indicadores(indicadores, ticker)
     exibir_pontuacao(pontuacao, ticker)
+
+    # ✨ Calcular e exibir métricas derivadas
+    tipo_fundo = indicadores.get("tipo_fundo", "desconhecido")
+    metricas_derivadas = calcular_metricas_derivadas(indicadores, tipo_fundo)
+    tabela_metricas = exibir_metricas_console(indicadores, metricas_derivadas, tipo_fundo)
+    console.print(tabela_metricas)
 
     # Verificar histórico e duplicatas
     historico = carregar_historico(ticker)
