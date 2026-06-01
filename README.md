@@ -97,6 +97,18 @@ USAR_IA_EXTRACAO=0  # 1 para usar IA na extração complementar
 
 **Obtenha sua chave em**: https://openrouter.ai
 
+### ⚙️ Configuração Streamlit
+
+**IMPORTANTE**: `runOnSave` deve estar **desativado** (`false`)
+
+O arquivo `.streamlit/config.toml` já vem configurado corretamente:
+```toml
+[server]
+runOnSave = false  # ✅ Necessário para evitar erros
+```
+
+Se você ativar `runOnSave = true`, o Streamlit fará rerun automático e causará erros. Deixe como está!
+
 ## 🎯 Fluxo de Processamento
 
 ```

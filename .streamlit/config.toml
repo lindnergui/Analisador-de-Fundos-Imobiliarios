@@ -12,5 +12,8 @@ showWarningOnDirectExecution = false
 
 [server]
 headless = true
+# IMPORTANTE: runOnSave = false é necessário
+# Se ativar (true), o Streamlit faz rerun automático e causa erros
+# O app funciona perfeitamente com runOnSave = false (padrão)
 runOnSave = false
 maxUploadSize = 200
