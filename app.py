@@ -96,6 +96,7 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
             recomendacao = resultado["recomendacao"]
 
             st.success(f"✅ Análise concluída para {ticker}!")
+            st.balloons()
 
             col_metric1, col_metric2, col_metric3, col_metric4 = st.columns(4)
 

@@ -244,9 +244,6 @@ def processar_fii(pdf_path: str, ticker: str) -> dict:
     historico = carregar_historico(ticker)
     novo_ticker = not ticker_existe(ticker)
 
-    if tem_analise_este_mes(ticker):
-        raise ValueError(f"Análise do mês atual já existe para {ticker}")
-
     incluir_tendencia = not novo_ticker
     indicadores["pontuacao"] = pontuacao
     analise = analisar_fii(ticker, dados["texto_completo"], indicadores, historico, incluir_tendencia=incluir_tendencia)
