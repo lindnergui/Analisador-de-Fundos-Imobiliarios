@@ -261,7 +261,7 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                     for secao in secoes:
                         if secao in linha_upper:
                             if buffer and secao_atual:
-                                conteudo = "\n".join(buffer).strip().replace("`", "")
+                                conteudo = "\n".join(buffer).strip()
                                 if conteudo:
                                     with st.expander(f"**{secao_atual}**", expanded=secao_atual == "RECOMENDAÇÃO FINAL"):
                                         st.write(conteudo)
@@ -271,12 +271,17 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                             break
 
                     if not encontrou and secao_atual:
-                        linha_limpa = linha.replace("**", "").replace("*", "•").replace("`", "").strip()
+                        linha_limpa = (linha
+                            .replace("**", "")
+                            .replace("*", "")
+                            .replace("`", "")
+                            .replace("_", " ")
+                            .strip())
                         if linha_limpa:
                             buffer.append(linha_limpa)
 
                 if buffer and secao_atual:
-                    conteudo = "\n".join(buffer).strip().replace("`", "")
+                    conteudo = "\n".join(buffer).strip()
                     if conteudo:
                         with st.expander(f"**{secao_atual}**", expanded=secao_atual == "RECOMENDAÇÃO FINAL"):
                             st.write(conteudo)
