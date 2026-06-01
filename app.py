@@ -78,22 +78,29 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
         st.error("❌ Ticker deve ter pelo menos 4 caracteres")
     else:
         try:
+            print(f"🔍 [DEBUG] Iniciando processamento para {ticker}")
+
             with st.spinner("⏳ Processando PDF... aguarde..."):
                 with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
                     tmp.write(pdf_file.read())
                     tmp_path = tmp.name
 
                 try:
+                    print(f"🔍 [DEBUG] Chamando processar_fii com {tmp_path}")
                     resultado = processar_fii(tmp_path, ticker)
+                    print(f"🔍 [DEBUG] Processamento OK, retorno recebido")
                 finally:
                     os.unlink(tmp_path)
 
+            print(f"🔍 [DEBUG] Extraindo dados do resultado")
             indicadores = resultado["indicadores"]
             pontuacao = resultado["pontuacao"]
             metricas = resultado["metricas_derivadas"]
             tipo_fundo = resultado["tipo_fundo"]
             analise = resultado["analise"]
             recomendacao = resultado["recomendacao"]
+
+            print(f"🔍 [DEBUG] Todos os dados extraídos, exibindo na UI")
 
             st.success(f"✅ Análise concluída para {ticker}!")
             st.balloons()
@@ -307,7 +314,13 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                 st.info("✅ Análise salva automaticamente no histórico")
 
         except ValueError as e:
-            st.warning(f"⚠️  {str(e)}")
+            print(f"❌ [DEBUG] ValueError: {str(e)}")
+            st.warning("⚠️ Análise deste ticker já existe neste mês!")
+            st.info("💡 Dica: Use um ticker diferente ou aguarde o próximo mês para uma nova análise")
         except Exception as e:
+            print(f"❌ [DEBUG] Exception: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             st.error(f"❌ Erro ao processar: {str(e)}")
+            st.error("Verifique o console para mais detalhes do erro")
             st.error("Verifique se o arquivo PDF é válido")
