@@ -41,7 +41,7 @@ with st.sidebar:
         - 📊 Indicadores-chave extraídos
         - 🎯 Pontuação conservadora
         - 📈 Métricas derivadas
-        - 🤖 Análise com IA
+        - ✨ Análise com IA
         - 💡 Recomendação final
         """
     )
