@@ -15,6 +15,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Inicializar session state
+if "resultado" not in st.session_state:
+    st.session_state.resultado = None
+
 st.markdown("""
 <style>
     .main {
@@ -88,6 +92,7 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                 try:
                     print(f"🔍 [DEBUG] Chamando processar_fii com {tmp_path}")
                     resultado = processar_fii(tmp_path, ticker)
+                    st.session_state.resultado = resultado
                     print(f"🔍 [DEBUG] Processamento OK, retorno recebido")
                 finally:
                     os.unlink(tmp_path)
@@ -109,18 +114,25 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
 
             with col_metric1:
                 dy = indicadores.get("dy_mensal")
-                st.metric("📊 DY Mensal", f"{dy}%" if dy else "—",
-                         delta="Alta" if dy and dy > 0.5 else None)
+                if dy:
+                    st.metric("📊 DY Mensal", f"{dy}%", delta="Alta" if dy > 0.5 else None)
+                else:
+                    st.metric("📊 DY Mensal", "—")
 
             with col_metric2:
                 pvp = indicadores.get("pvp")
-                st.metric("💰 P/VP", f"{pvp}" if pvp else "—",
-                         delta="Bom" if pvp and pvp < 1 else None)
+                if pvp:
+                    st.metric("💰 P/VP", f"{pvp}", delta="Bom" if pvp < 1 else None)
+                else:
+                    st.metric("💰 P/VP", "—")
 
             with col_metric3:
                 vac = indicadores.get("vacancia")
-                st.metric("🏢 Vacância", f"{vac}%" if vac else "—",
-                         delta="Baixa" if vac and vac < 10 else "Média" if vac and vac < 20 else "Alta")
+                if vac:
+                    delta_vac = "Baixa" if vac < 10 else "Média" if vac < 20 else "Alta"
+                    st.metric("🏢 Vacância", f"{vac}%", delta=delta_vac)
+                else:
+                    st.metric("🏢 Vacância", "—")
 
             with col_metric4:
                 score = pontuacao["percentual"]

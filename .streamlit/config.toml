@@ -12,5 +12,5 @@ showWarningOnDirectExecution = false
 
 [server]
 headless = true
-runOnSave = true
+runOnSave = false
 maxUploadSize = 200
