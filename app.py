@@ -264,7 +264,7 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                                 conteudo = "\n".join(buffer).strip()
                                 if conteudo:
                                     with st.expander(f"**{secao_atual}**", expanded=secao_atual == "RECOMENDAÇÃO FINAL"):
-                                        st.write(conteudo)
+                                        st.text(conteudo)
                             buffer = []
                             secao_atual = secao
                             encontrou = True
@@ -284,7 +284,7 @@ if st.button("🚀 Analisar", use_container_width=True, type="primary"):
                     conteudo = "\n".join(buffer).strip()
                     if conteudo:
                         with st.expander(f"**{secao_atual}**", expanded=secao_atual == "RECOMENDAÇÃO FINAL"):
-                            st.write(conteudo)
+                            st.text(conteudo)
 
             with tabs[4]:
                 st.subheader("📋 Resumo Final")
