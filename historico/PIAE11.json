@@ -1,0 +1,67 @@
+[
+  {
+    "data": "2026-05-31T20:51:04.306089",
+    "indicadores": {
+      "dy_mensal": null,
+      "dy_anual": null,
+      "cota_mercado": 6.86,
+      "cota_patrimonial": 7.9,
+      "pvp": 0.8684,
+      "ultimo_rendimento": null,
+      "resultado_mensal": null,
+      "num_cotas": 221840000.0,
+      "valor_mercado_bi": null,
+      "valor_patrimonial_bi": 1.77,
+      "taxa_liquida_ipca": null,
+      "adimplencia": null,
+      "vacancia": null,
+      "area_total": null,
+      "tipo_fundo": "fof",
+      "tipo_confianca": 0.95,
+      "tipo_evidencias": [
+        "Tipo ANBIMA indica TVM/Fundo de Fundos"
+      ],
+      "pontuacao": {
+        "tipo": "fof",
+        "total": 35,
+        "max": 69,
+        "percentual": 50.7,
+        "conceito": "Neutro",
+        "cor": "yellow",
+        "itens": [
+          {
+            "fator": "Tipo identificado",
+            "pontos": 5,
+            "max": 5,
+            "detalhe": "Tipo identificado com 95% de confiança"
+          },
+          {
+            "fator": "Desconto patrimonial",
+            "pontos": 21,
+            "max": 26,
+            "detalhe": "P/VP 0.87: bom desconto"
+          },
+          {
+            "fator": "Rendimento mensal",
+            "pontos": 0,
+            "max": 14,
+            "detalhe": "DY mensal não encontrado"
+          },
+          {
+            "fator": "Cobertura do rendimento",
+            "pontos": 0,
+            "max": 12,
+            "detalhe": "Resultado ou rendimento não encontrado"
+          },
+          {
+            "fator": "Tamanho/liquidez do fundo",
+            "pontos": 9,
+            "max": 12,
+            "detalhe": "Fundo de bom porte: R$ 1.77 bi"
+          }
+        ]
+      }
+    },
+    "analise": "## ANÁLISE ENRIQUECIDA - PIAE11 (HFOF11)\n\n**1. PONTOS FORTES**\n\n*   **Desconto Patrimonial:** O fundo apresenta um P/VP de 0.8684x, indicando um desconto em relação ao valor patrimonial. O relatório indica que a recompra de cotas com desconto médio de 16,9% demonstra um esforço para aumentar o valor patrimonial por cota remanescente.\n*   **Tamanho:** O valor patrimonial de R$ 1.77 bi é considerado aceitável (médio), sugerindo uma certa escala e liquidez ao fundo.\n*   **Histórico de Retornos:** O relatório demonstra que o HFOF apresentou um retorno desde o início superior ao do IFIX (78,3% vs 71,1%) e ao CDI líquido.\n*   **Pagamento de Rendimentos:** O fundo distribuiu R$ 0,060 por cota em abril de 2026, próximo ao FFO, indicando um rendimento sustentável.\n\n**2. PONTOS FRACOS / RISCOS**\n\n*   **Falta de Informações sobre a Carteira:** Não há detalhes sobre a composição da carteira de FIIs subjacentes. A qualidade dos FIIs nos quais o fundo investe é crucial, mas essa informação não está disponível.\n*   **DY Não Disponível:** O DY mensal e anual não foram encontrados no relatório, o que dificulta a comparação com outros FIIs e a avaliação do potencial de renda.\n*   **Fee Drag:** A taxa de administração de 0,60% ao ano sobre o PL ou valor de mercado, combinada com a taxa de performance de 20% sobre o que exceder o IFIX, pode impactar negativamente a distribuição final aos cotistas (fee drag).\n*   **Dependência de Gestão Ativa:** Sendo um FOF, o desempenho depende fortemente da capacidade da gestora em selecionar bons FIIs e realizar operações lucrativas com eles.\n\n**3. ANÁLISE DOS INDICADORES**\n\n*   **P/VP (0.8684x):** Indica um desconto de 13,16% em relação ao valor patrimonial (1 - 0.8684 = 0.1316). A métrica derivada \"pvp_status\" confirma: \"Em Desconto (0.87x) - Oportunidade\".\n*   **Tamanho (R$ 1.77 bi):** A métrica derivada \"tamanho_status\" confirma: \"Médio (1.8bi) - Aceitável\".\n*   **Pontuação Geral:** A pontuação geral do fundo é de 50,7% (conceito \"Neutro\"), sugerindo um perfil intermediário. O principal destaque positivo é o desconto patrimonial.\n*   **Tipo:** A identificação do fundo como TVM/Fundo de Fundos (com confiança de 95%) confirma a sua estratégia de investimento em outros FIIs.\n\nApesar do desconto patrimonial ser um bom sinal, a ausência de dados sobre o DY dificulta a avaliação do fluxo de caixa. A recompra de cotas é positiva, mas os resultados passados não garantem desempenho futuro.\n\n**4. RECOMENDAÇÃO FINAL: CONTINUAR**\n\nApesar dos riscos inerentes à falta de detalhes sobre a carteira e do fee drag, o desconto patrimonial atrativo (P/VP de 0.8684x) e o histórico de retornos superiores ao IFIX sugerem que o fundo tem potencial. Sua recomendação é **CONTINUAR** a acompanhar o HFOF11, com cautela e monitorando a evolução da carteira (se informações adicionais forem divulgadas) e a capacidade da gestora em gerar rendimentos consistentes. É crucial observar se a gestora manterá a capacidade de entregar rendimentos superiores ao IFIX no longo prazo e se o desconto patrimonial persistirá."
+  }
+]

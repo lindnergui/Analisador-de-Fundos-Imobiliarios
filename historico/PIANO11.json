@@ -1,0 +1,67 @@
+[
+  {
+    "data": "2026-05-31T20:53:22.454252",
+    "indicadores": {
+      "dy_mensal": null,
+      "dy_anual": null,
+      "cota_mercado": 6.86,
+      "cota_patrimonial": 7.9,
+      "pvp": 0.8684,
+      "ultimo_rendimento": null,
+      "resultado_mensal": null,
+      "num_cotas": 221840000.0,
+      "valor_mercado_bi": null,
+      "valor_patrimonial_bi": 1.77,
+      "taxa_liquida_ipca": null,
+      "adimplencia": null,
+      "vacancia": null,
+      "area_total": null,
+      "tipo_fundo": "fof",
+      "tipo_confianca": 0.95,
+      "tipo_evidencias": [
+        "Tipo ANBIMA indica TVM/Fundo de Fundos"
+      ],
+      "pontuacao": {
+        "tipo": "fof",
+        "total": 35,
+        "max": 69,
+        "percentual": 50.7,
+        "conceito": "Neutro",
+        "cor": "yellow",
+        "itens": [
+          {
+            "fator": "Tipo identificado",
+            "pontos": 5,
+            "max": 5,
+            "detalhe": "Tipo identificado com 95% de confiança"
+          },
+          {
+            "fator": "Desconto patrimonial",
+            "pontos": 21,
+            "max": 26,
+            "detalhe": "P/VP 0.87: bom desconto"
+          },
+          {
+            "fator": "Rendimento mensal",
+            "pontos": 0,
+            "max": 14,
+            "detalhe": "DY mensal não encontrado"
+          },
+          {
+            "fator": "Cobertura do rendimento",
+            "pontos": 0,
+            "max": 12,
+            "detalhe": "Resultado ou rendimento não encontrado"
+          },
+          {
+            "fator": "Tamanho/liquidez do fundo",
+            "pontos": 9,
+            "max": 12,
+            "detalhe": "Fundo de bom porte: R$ 1.77 bi"
+          }
+        ]
+      }
+    },
+    "analise": "\n## ANÁLISE FOF - PIANO11 (HFOF11)\n\n**1. PONTOS FORTES**\n\n*   **Desconto Patrimonial:** O FII apresenta um P/VP de 0.8684, indicando um desconto de 13,16% em relação ao valor patrimonial. Isso representa uma oportunidade, conforme indicado pela métrica calculada \"pvp_status\".\n*   **Tamanho do Fundo:** O tamanho do fundo (R$1.77 bilhões) é considerado \"Médio\", o que é aceitável e sugere uma boa liquidez, conforme \"tamanho_status\".\n*   **Histórico de Retornos:** O relatório demonstra um histórico de retornos competitivos, superando o IFIX e o CDI no longo prazo, inclusive considerando o reinvestimento dos dividendos.\n* **Recompra de Cotas:** O programa de recompra de cotas tem gerado valor para os cotistas, com um desconto médio de 16,9% e um impacto positivo no valor patrimonial por cota remanescente.\n* **Gestão Ativa:** A administração ativa (TVM) busca oportunidades de originação própria além de alocações em FIIs de mercado, buscando mitigar riscos e aumentar retornos.\n\n**2. PONTOS FRACOS / RISCOS**\n\n*   **Falta de Dados de Rendimento:** Não foi encontrado o \"dy_mensal\", \"dy_anual\" ou \"ultimo_rendimento\" no relatório. Isso dificulta a avaliação do potencial de geração de renda atual do fundo.\n*   **Dependência do Mercado de FIIs:** Como um FOF, o desempenho está intrinsecamente ligado à qualidade e à performance dos FIIs subjacentes. A ausência de detalhes sobre a composição da carteira impede uma avaliação completa desse risco.\n* **Fee Drag:** A taxa de administração de 0,60% ao ano e a taxa de performance de 20% sobre o que exceder o IFIX podem reduzir a rentabilidade líquida distribuída aos cotistas (fee drag).\n* **Vendas e compras:** O giro da carteira foi de 21,5% nos últimos 12 meses. É preciso entender se o giro é eficiente para capturar oportunidades ou se gera custos elevados.\n\n**3. ANÁLISE DOS INDICADORES**\n\n*   **P/VP (0.8684):** Apresenta um desconto significativo, sugerindo que o mercado está precificando o fundo abaixo do seu valor patrimonial. Isso pode ser uma oportunidade, desde que a qualidade dos ativos subjacentes seja boa.\n*   **Pontuação Geral (50.7%):** A pontuação geral do fundo é considerada “Neutra”. Isso reflete a ausência de informações sobre o rendimento mensal e a cobertura do rendimento, que são importantes para uma avaliação mais completa.\n*   **Tipo Fundo (FOF):** Confirmado como Fundo de Fundos com 95% de confiança, reforçando a necessidade de analisar a qualidade da carteira subjacente.\n* **Valor Patrimonial (R$1.77 bi):** Confirma o status de fundo de porte médio, oferecendo liquidez razoável.\n\n**4. RECOMENDAÇÃO FINAL: CONTINUAR**\n\nApesar da falta de dados sobre rendimentos e da dependência da qualidade dos FIIs subjacentes (informação não fornecida no relatório), o desconto patrimonial de 13,16% e o histórico de retornos competitivos superando o IFIX e o CDI tornam o PIANO11 (HFOF11) atrativo.\n\n**Recomenda-se CONTINUAR** investido, mas com cautela. A análise seria aprofundada com informações sobre a alocação da carteira e os históricos de rendimento dos FIIs subjacentes. Acompanhar os relatórios gerenciais futuros para avaliar o impacto da recompra de cotas e a evolução do FFO (Fluxo de Caixa Operacional) é fundamental para confirmar a sustentabilidade dos dividendos.\n"
+  }
+]
